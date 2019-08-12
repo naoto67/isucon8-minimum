@@ -24,9 +24,11 @@ type Sheet struct {
 }
 
 func validateRank(rank string) bool {
-	var count int
-	db.QueryRow("SELECT COUNT(*) FROM sheets WHERE `rank` = ?", rank).Scan(&count)
-	return count > 0
+	switch rank {
+	case "A", "S", "B", "C":
+		return true
+	}
+	return false
 }
 
 func getSheetByNumAndRank(num int64, rank string) (*Sheet, int64) {
