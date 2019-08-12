@@ -403,7 +403,6 @@ func main() {
 		sheet, ok := getSheetByNumAndRank(num, rank)
 		if ok < 0 {
 			return resError(c, "invalid_sheet", 404)
-			return errors.New("Invalid sheet")
 		}
 
 		tx, err := db.Begin()
