@@ -90,6 +90,9 @@ func main() {
 		if err != nil {
 			return nil
 		}
+		if err = initActiveRerservations(); err != nil {
+			return nil
+		}
 
 		return c.NoContent(204)
 	})
@@ -346,7 +349,8 @@ func main() {
 			}
 			rand.Seed(time.Now().UnixNano())
 			sheet = sheets[rand.Intn(len(sheets))]
-			res, err := tx.Exec("INSERT INTO reservations (event_id, sheet_id, user_id, reserved_at) VALUES (?, ?, ?, ?)", event.ID, sheet.ID, user.ID, time.Now().UTC().Format("2006-01-02 15:04:05.000000"))
+			timeNow := time.Now()
+			res, err := tx.Exec("INSERT INTO reservations (event_id, sheet_id, user_id, reserved_at) VALUES (?, ?, ?, ?)", event.ID, sheet.ID, user.ID, timeNow.UTC().Format("2006-01-02 15:04:05.000000"))
 			if err != nil {
 				tx.Rollback()
 				log.Println("re-try: rollback by", err)
@@ -364,6 +368,14 @@ func main() {
 				continue
 			}
 
+			appendActiveReservationToCache(eventID, Reservation{
+				ID:         reservationID,
+				EventID:    eventID,
+				SheetID:    sheet.ID,
+				UserID:     user.ID,
+				ReservedAt: &timeNow,
+				CanceledAt: nil,
+			})
 			break
 		}
 		return c.JSON(202, echo.Map{
@@ -435,6 +447,10 @@ func main() {
 		}
 
 		if err := tx.Commit(); err != nil {
+			return err
+		}
+
+		if err = removeReservationFromCache(eventID, reservation.ID); err != nil {
 			return err
 		}
 
