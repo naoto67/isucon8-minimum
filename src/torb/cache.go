@@ -65,7 +65,7 @@ func initActiveRerservations() error {
 	}
 	defer rows.Close()
 
-	var activeReservationsMap map[int64][]Reservation
+	activeReservationsMap := map[int64][]Reservation{}
 
 	var reservation Reservation
 	for rows.Next() {
