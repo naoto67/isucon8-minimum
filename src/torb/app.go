@@ -9,6 +9,7 @@ import (
 	"html/template"
 	"io"
 	"log"
+	"math/rand"
 	"os"
 	"os/exec"
 	"sort"
@@ -23,129 +24,6 @@ import (
 	"github.com/labstack/echo/middleware"
 )
 
-type User struct {
-	ID        int64  `json:"id,omitempty"`
-	Nickname  string `json:"nickname,omitempty"`
-	LoginName string `json:"login_name,omitempty"`
-	PassHash  string `json:"pass_hash,omitempty"`
-}
-
-type Event struct {
-	ID       int64  `json:"id,omitempty"`
-	Title    string `json:"title,omitempty"`
-	PublicFg bool   `json:"public,omitempty"`
-	ClosedFg bool   `json:"closed,omitempty"`
-	Price    int64  `json:"price,omitempty"`
-
-	Total   int                `json:"total"`
-	Remains int                `json:"remains"`
-	Sheets  map[string]*Sheets `json:"sheets,omitempty"`
-}
-
-type Sheets struct {
-	Total   int      `json:"total"`
-	Remains int      `json:"remains"`
-	Detail  []*Sheet `json:"detail,omitempty"`
-	Price   int64    `json:"price"`
-}
-
-type Sheet struct {
-	ID    int64  `json:"-"`
-	Rank  string `json:"-"`
-	Num   int64  `json:"num"`
-	Price int64  `json:"-"`
-
-	Mine           bool       `json:"mine,omitempty"`
-	Reserved       bool       `json:"reserved,omitempty"`
-	ReservedAt     *time.Time `json:"-"`
-	ReservedAtUnix int64      `json:"reserved_at,omitempty"`
-}
-
-type Reservation struct {
-	ID         int64      `json:"id"`
-	EventID    int64      `json:"-"`
-	SheetID    int64      `json:"-"`
-	UserID     int64      `json:"-"`
-	ReservedAt *time.Time `json:"-"`
-	CanceledAt *time.Time `json:"-"`
-
-	Event          *Event `json:"event,omitempty"`
-	SheetRank      string `json:"sheet_rank,omitempty"`
-	SheetNum       int64  `json:"sheet_num,omitempty"`
-	Price          int64  `json:"price,omitempty"`
-	ReservedAtUnix int64  `json:"reserved_at,omitempty"`
-	CanceledAtUnix int64  `json:"canceled_at,omitempty"`
-}
-
-type Administrator struct {
-	ID        int64  `json:"id,omitempty"`
-	Nickname  string `json:"nickname,omitempty"`
-	LoginName string `json:"login_name,omitempty"`
-	PassHash  string `json:"pass_hash,omitempty"`
-}
-
-func sessUserID(c echo.Context) int64 {
-	sess, _ := session.Get("session", c)
-	var userID int64
-	if x, ok := sess.Values["user_id"]; ok {
-		userID, _ = x.(int64)
-	}
-	return userID
-}
-
-func sessSetUserID(c echo.Context, id int64) {
-	sess, _ := session.Get("session", c)
-	sess.Options = &sessions.Options{
-		Path:     "/",
-		MaxAge:   3600,
-		HttpOnly: true,
-	}
-	sess.Values["user_id"] = id
-	sess.Save(c.Request(), c.Response())
-}
-
-func sessDeleteUserID(c echo.Context) {
-	sess, _ := session.Get("session", c)
-	sess.Options = &sessions.Options{
-		Path:     "/",
-		MaxAge:   3600,
-		HttpOnly: true,
-	}
-	delete(sess.Values, "user_id")
-	sess.Save(c.Request(), c.Response())
-}
-
-func sessAdministratorID(c echo.Context) int64 {
-	sess, _ := session.Get("session", c)
-	var administratorID int64
-	if x, ok := sess.Values["administrator_id"]; ok {
-		administratorID, _ = x.(int64)
-	}
-	return administratorID
-}
-
-func sessSetAdministratorID(c echo.Context, id int64) {
-	sess, _ := session.Get("session", c)
-	sess.Options = &sessions.Options{
-		Path:     "/",
-		MaxAge:   3600,
-		HttpOnly: true,
-	}
-	sess.Values["administrator_id"] = id
-	sess.Save(c.Request(), c.Response())
-}
-
-func sessDeleteAdministratorID(c echo.Context) {
-	sess, _ := session.Get("session", c)
-	sess.Options = &sessions.Options{
-		Path:     "/",
-		MaxAge:   3600,
-		HttpOnly: true,
-	}
-	delete(sess.Values, "administrator_id")
-	sess.Save(c.Request(), c.Response())
-}
-
 func loginRequired(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		if _, err := getLoginUser(c); err != nil {
@@ -153,150 +31,6 @@ func loginRequired(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 		return next(c)
 	}
-}
-
-func adminLoginRequired(next echo.HandlerFunc) echo.HandlerFunc {
-	return func(c echo.Context) error {
-		if _, err := getLoginAdministrator(c); err != nil {
-			return resError(c, "admin_login_required", 401)
-		}
-		return next(c)
-	}
-}
-
-func getLoginUser(c echo.Context) (*User, error) {
-	userID := sessUserID(c)
-	if userID == 0 {
-		return nil, errors.New("not logged in")
-	}
-	var user User
-	err := db.QueryRow("SELECT id, nickname FROM users WHERE id = ?", userID).Scan(&user.ID, &user.Nickname)
-	return &user, err
-}
-
-func getLoginAdministrator(c echo.Context) (*Administrator, error) {
-	administratorID := sessAdministratorID(c)
-	if administratorID == 0 {
-		return nil, errors.New("not logged in")
-	}
-	var administrator Administrator
-	err := db.QueryRow("SELECT id, nickname FROM administrators WHERE id = ?", administratorID).Scan(&administrator.ID, &administrator.Nickname)
-	return &administrator, err
-}
-
-func getEvents(all bool) ([]*Event, error) {
-	tx, err := db.Begin()
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Commit()
-
-	rows, err := tx.Query("SELECT * FROM events ORDER BY id ASC")
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var events []*Event
-	for rows.Next() {
-		var event Event
-		if err := rows.Scan(&event.ID, &event.Title, &event.PublicFg, &event.ClosedFg, &event.Price); err != nil {
-			return nil, err
-		}
-		if !all && !event.PublicFg {
-			continue
-		}
-		events = append(events, &event)
-	}
-	for i, v := range events {
-		event, err := getEvent(v.ID, -1)
-		if err != nil {
-			return nil, err
-		}
-		for k := range event.Sheets {
-			event.Sheets[k].Detail = nil
-		}
-		events[i] = event
-	}
-	return events, nil
-}
-
-func getEvent(eventID, loginUserID int64) (*Event, error) {
-	var event Event
-	if err := db.QueryRow("SELECT * FROM events WHERE id = ?", eventID).Scan(&event.ID, &event.Title, &event.PublicFg, &event.ClosedFg, &event.Price); err != nil {
-		return nil, err
-	}
-	event.Sheets = map[string]*Sheets{
-		"S": &Sheets{},
-		"A": &Sheets{},
-		"B": &Sheets{},
-		"C": &Sheets{},
-	}
-
-	rows, err := db.Query("SELECT * FROM sheets ORDER BY `rank`, num")
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var sheet Sheet
-		if err := rows.Scan(&sheet.ID, &sheet.Rank, &sheet.Num, &sheet.Price); err != nil {
-			return nil, err
-		}
-		event.Sheets[sheet.Rank].Price = event.Price + sheet.Price
-		event.Total++
-		event.Sheets[sheet.Rank].Total++
-
-		var reservation Reservation
-		err := db.QueryRow("SELECT * FROM reservations WHERE event_id = ? AND sheet_id = ? AND canceled_at IS NULL GROUP BY event_id, sheet_id HAVING reserved_at = MIN(reserved_at)", event.ID, sheet.ID).Scan(&reservation.ID, &reservation.EventID, &reservation.SheetID, &reservation.UserID, &reservation.ReservedAt, &reservation.CanceledAt)
-		if err == nil {
-			sheet.Mine = reservation.UserID == loginUserID
-			sheet.Reserved = true
-			sheet.ReservedAtUnix = reservation.ReservedAt.Unix()
-		} else if err == sql.ErrNoRows {
-			event.Remains++
-			event.Sheets[sheet.Rank].Remains++
-		} else {
-			return nil, err
-		}
-
-		event.Sheets[sheet.Rank].Detail = append(event.Sheets[sheet.Rank].Detail, &sheet)
-	}
-
-	return &event, nil
-}
-
-func sanitizeEvent(e *Event) *Event {
-	sanitized := *e
-	sanitized.Price = 0
-	sanitized.PublicFg = false
-	sanitized.ClosedFg = false
-	return &sanitized
-}
-
-func fillinUser(next echo.HandlerFunc) echo.HandlerFunc {
-	return func(c echo.Context) error {
-		if user, err := getLoginUser(c); err == nil {
-			c.Set("user", user)
-		}
-		return next(c)
-	}
-}
-
-func fillinAdministrator(next echo.HandlerFunc) echo.HandlerFunc {
-	return func(c echo.Context) error {
-		if administrator, err := getLoginAdministrator(c); err == nil {
-			c.Set("administrator", administrator)
-		}
-		return next(c)
-	}
-}
-
-func validateRank(rank string) bool {
-	var count int
-	db.QueryRow("SELECT COUNT(*) FROM sheets WHERE `rank` = ?", rank).Scan(&count)
-	return count > 0
 }
 
 type Renderer struct {
@@ -415,68 +149,56 @@ func main() {
 			return resError(c, "forbidden", 403)
 		}
 
-		rows, err := db.Query("SELECT r.*, s.rank AS sheet_rank, s.num AS sheet_num FROM reservations r INNER JOIN sheets s ON s.id = r.sheet_id WHERE r.user_id = ? ORDER BY IFNULL(r.canceled_at, r.reserved_at) DESC LIMIT 5", user.ID)
+		rows, err := db.Query("SELECT * FROM reservations r INNER JOIN events e ON e.id = r.event_id WHERE r.user_id = ? ORDER BY IFNULL(r.canceled_at, r.reserved_at) DESC", user.ID)
 		if err != nil {
 			return err
 		}
 		defer rows.Close()
 
 		var recentReservations []Reservation
+		var recentEvents []*Event
+		var eventIDs []int64
+		var totalPrice int
+
 		for rows.Next() {
 			var reservation Reservation
-			var sheet Sheet
-			if err := rows.Scan(&reservation.ID, &reservation.EventID, &reservation.SheetID, &reservation.UserID, &reservation.ReservedAt, &reservation.CanceledAt, &sheet.Rank, &sheet.Num); err != nil {
+			var event Event
+			if err := rows.Scan(&reservation.ID, &reservation.EventID, &reservation.SheetID, &reservation.UserID, &reservation.ReservedAt, &reservation.CanceledAt, &event.ID, &event.Title, &event.PublicFg, &event.ClosedFg, &event.Price); err != nil {
 				return err
 			}
-
-			event, err := getEvent(reservation.EventID, -1)
-			if err != nil {
-				return err
-			}
-			price := event.Sheets[sheet.Rank].Price
-			event.Sheets = nil
-			event.Total = 0
-			event.Remains = 0
-
-			reservation.Event = event
-			reservation.SheetRank = sheet.Rank
-			reservation.SheetNum = sheet.Num
-			reservation.Price = price
-			reservation.ReservedAtUnix = reservation.ReservedAt.Unix()
 			if reservation.CanceledAt != nil {
 				reservation.CanceledAtUnix = reservation.CanceledAt.Unix()
+				totalPrice += int(event.Price)
 			}
-			recentReservations = append(recentReservations, reservation)
+
+			if len(recentReservations) < 5 {
+				sheet, ok := getSheetByID(reservation.SheetID)
+				if ok < 0 {
+					return errors.New("not found")
+				}
+
+				price := sheet.Price + event.Price
+
+				reservation.Event = &event
+				reservation.SheetRank = sheet.Rank
+				reservation.SheetNum = sheet.Num
+				reservation.Price = price
+				reservation.ReservedAtUnix = reservation.ReservedAt.Unix()
+				recentReservations = append(recentReservations, reservation)
+			}
+
+			if len(recentEvents) < 5 && !contains(eventIDs, event.ID) {
+				e, err := getEventWithoutDetail(event, -1)
+				if err != nil {
+					return err
+				}
+				recentEvents = append(recentEvents, e)
+				eventIDs = append(eventIDs, event.ID)
+			}
 		}
+
 		if recentReservations == nil {
 			recentReservations = make([]Reservation, 0)
-		}
-
-		var totalPrice int
-		if err := db.QueryRow("SELECT IFNULL(SUM(e.price + s.price), 0) FROM reservations r INNER JOIN sheets s ON s.id = r.sheet_id INNER JOIN events e ON e.id = r.event_id WHERE r.user_id = ? AND r.canceled_at IS NULL", user.ID).Scan(&totalPrice); err != nil {
-			return err
-		}
-
-		rows, err = db.Query("SELECT event_id FROM reservations WHERE user_id = ? GROUP BY event_id ORDER BY MAX(IFNULL(canceled_at, reserved_at)) DESC LIMIT 5", user.ID)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-
-		var recentEvents []*Event
-		for rows.Next() {
-			var eventID int64
-			if err := rows.Scan(&eventID); err != nil {
-				return err
-			}
-			event, err := getEvent(eventID, -1)
-			if err != nil {
-				return err
-			}
-			for k := range event.Sheets {
-				event.Sheets[k].Detail = nil
-			}
-			recentEvents = append(recentEvents, event)
 		}
 		if recentEvents == nil {
 			recentEvents = make([]*Event, 0)
@@ -585,21 +307,34 @@ func main() {
 			return resError(c, "invalid_rank", 400)
 		}
 
-		var sheet Sheet
+		var sheets []Sheet
 		var reservationID int64
-		for {
-			if err := db.QueryRow("SELECT * FROM sheets WHERE id NOT IN (SELECT sheet_id FROM reservations WHERE event_id = ? AND canceled_at IS NULL FOR UPDATE) AND `rank` = ? ORDER BY RAND() LIMIT 1", event.ID, params.Rank).Scan(&sheet.ID, &sheet.Rank, &sheet.Num, &sheet.Price); err != nil {
-				if err == sql.ErrNoRows {
-					return resError(c, "sold_out", 409)
-				}
+
+		rows, err := db.Query("SELECT * FROM sheets WHERE id NOT IN (SELECT sheet_id FROM reservations WHERE event_id = ? AND canceled_at IS NULL FOR UPDATE) AND `rank` = ?", event.ID, params.Rank)
+		if err == sql.ErrNoRows {
+			return resError(c, "sold_out", 409)
+		}
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var sheet Sheet
+			if err := rows.Scan(&sheet.ID, &sheet.Rank, &sheet.Num, &sheet.Price); err != nil {
 				return err
 			}
+			sheets = append(sheets, sheet)
+		}
 
+		var sheet Sheet
+		for {
 			tx, err := db.Begin()
 			if err != nil {
 				return err
 			}
-
+			rand.Seed(time.Now().UnixNano())
+			sheet = sheets[rand.Intn(len(sheets))]
 			res, err := tx.Exec("INSERT INTO reservations (event_id, sheet_id, user_id, reserved_at) VALUES (?, ?, ?, ?)", event.ID, sheet.ID, user.ID, time.Now().UTC().Format("2006-01-02 15:04:05.000000"))
 			if err != nil {
 				tx.Rollback()
@@ -653,12 +388,10 @@ func main() {
 			return resError(c, "invalid_rank", 404)
 		}
 
-		var sheet Sheet
-		if err := db.QueryRow("SELECT * FROM sheets WHERE `rank` = ? AND num = ?", rank, num).Scan(&sheet.ID, &sheet.Rank, &sheet.Num, &sheet.Price); err != nil {
-			if err == sql.ErrNoRows {
-				return resError(c, "invalid_sheet", 404)
-			}
-			return err
+		num64, _ := strconv.ParseInt(num, 10, 64)
+		sheet, ok := getSheetByNumAndRank(num64, rank)
+		if ok < 0 {
+			return resError(c, "invalid_sheet", 404)
 		}
 
 		tx, err := db.Begin()
@@ -852,7 +585,7 @@ func main() {
 			return err
 		}
 
-		rows, err := db.Query("SELECT r.*, s.rank AS sheet_rank, s.num AS sheet_num, s.price AS sheet_price, e.price AS event_price FROM reservations r INNER JOIN sheets s ON s.id = r.sheet_id INNER JOIN events e ON e.id = r.event_id WHERE r.event_id = ? ORDER BY reserved_at ASC FOR UPDATE", event.ID)
+		rows, err := db.Query(`SELECT r.*, e.price FROM reservations r INNER JOIN events e ON e.id = r.event_id WHERE r.event_id = ? ORDER BY reserved_at ASC FOR UPDATE`, event.ID)
 		if err != nil {
 			return err
 		}
@@ -861,10 +594,16 @@ func main() {
 		var reports []Report
 		for rows.Next() {
 			var reservation Reservation
-			var sheet Sheet
-			if err := rows.Scan(&reservation.ID, &reservation.EventID, &reservation.SheetID, &reservation.UserID, &reservation.ReservedAt, &reservation.CanceledAt, &sheet.Rank, &sheet.Num, &sheet.Price, &event.Price); err != nil {
+			var sheet *Sheet
+			if err := rows.Scan(&reservation.ID, &reservation.EventID, &reservation.SheetID, &reservation.UserID, &reservation.ReservedAt, &reservation.CanceledAt, &event.Price); err != nil {
 				return err
 			}
+
+			sheet, ok := getSheetByID(reservation.SheetID)
+			if ok < 0 {
+				return resError(c, "not_found", 404)
+			}
+
 			report := Report{
 				ReservationID: reservation.ID,
 				EventID:       event.ID,
@@ -882,7 +621,7 @@ func main() {
 		return renderReportCSV(c, reports)
 	}, adminLoginRequired)
 	e.GET("/admin/api/reports/sales", func(c echo.Context) error {
-		rows, err := db.Query("select r.*, s.rank as sheet_rank, s.num as sheet_num, s.price as sheet_price, e.id as event_id, e.price as event_price from reservations r inner join sheets s on s.id = r.sheet_id inner join events e on e.id = r.event_id order by reserved_at asc for update")
+		rows, err := db.Query("SELECT r.*, e.id, e.price FROM reservations r INNER JOIN events e ON e.id = r.event_id ORDER BY reserved_at ASC FOR UPDATE")
 		if err != nil {
 			return err
 		}
@@ -891,11 +630,18 @@ func main() {
 		var reports []Report
 		for rows.Next() {
 			var reservation Reservation
-			var sheet Sheet
+			var sheet *Sheet
 			var event Event
-			if err := rows.Scan(&reservation.ID, &reservation.EventID, &reservation.SheetID, &reservation.UserID, &reservation.ReservedAt, &reservation.CanceledAt, &sheet.Rank, &sheet.Num, &sheet.Price, &event.ID, &event.Price); err != nil {
+
+			if err := rows.Scan(&reservation.ID, &reservation.EventID, &reservation.SheetID, &reservation.UserID, &reservation.ReservedAt, &reservation.CanceledAt, &event.ID, &event.Price); err != nil {
 				return err
 			}
+
+			sheet, ok := getSheetByID(reservation.SheetID)
+			if ok < 0 {
+				return resError(c, "not_found", 404)
+			}
+
 			report := Report{
 				ReservationID: reservation.ID,
 				EventID:       event.ID,
