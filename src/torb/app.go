@@ -400,10 +400,6 @@ func main() {
 			return resError(c, "invalid_event", 404)
 		}
 
-		if !validateRank(rank) {
-			return resError(c, "invalid_rank", 404)
-		}
-
 		sheet, ok := getSheetByNumAndRank(num, rank)
 		if ok < 0 {
 			return resError(c, "invalid_sheet", 404)
