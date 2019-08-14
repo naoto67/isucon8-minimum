@@ -56,7 +56,7 @@ func initAllReservations() {
 		panic(err)
 	}
 
-	event_reservations := make(map[int64][]Reservation)
+	event_reservations := map[int64][]Reservation{}
 	for rows.Next() {
 		var r Reservation
 		err := rows.Scan(&r.ID, &r.EventID, &r.SheetID, &r.UserID, &r.ReservedAt, &r.CanceledAt)
@@ -67,7 +67,9 @@ func initAllReservations() {
 	}
 	for key, value := range event_reservations {
 		err := setReservationsToCache(key, value)
-		panic(err)
+		if err != nil {
+			panic(err)
+		}
 	}
 }
 
