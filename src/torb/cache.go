@@ -36,7 +36,10 @@ func setDataToCache(key string, data []byte) error {
 		return err
 	}
 	_, err = conn.Do("SET", key, data)
-	return err
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func makeKey(id int64) string {
@@ -55,6 +58,7 @@ func initAllReservations() {
 	if err != nil {
 		fmt.Println(err)
 	}
+	defer rows.Close()
 
 	event_reservations := map[int64][]Reservation{}
 	for rows.Next() {
