@@ -333,6 +333,8 @@ func main() {
 		}
 
 		var sheet Sheet
+		var sheetID int64
+		timeNow := time.Now()
 		for {
 			tx, err := db.Begin()
 			if err != nil {
@@ -340,7 +342,7 @@ func main() {
 			}
 			rand.Seed(time.Now().UnixNano())
 			sheet = sheets[rand.Intn(len(sheets))]
-			timeNow := time.Now()
+			sheetID = sheetID
 			res, err := tx.Exec("INSERT INTO reservations (event_id, sheet_id, user_id, reserved_at) VALUES (?, ?, ?, ?)", event.ID, sheet.ID, user.ID, timeNow.UTC().Format("2006-01-02 15:04:05.000000"))
 			if err != nil {
 				tx.Rollback()
@@ -361,6 +363,13 @@ func main() {
 
 			break
 		}
+		appendReservationToCache(eventID, Reservation{
+			ID:         reservationID,
+			EventID:    eventID,
+			SheetID:    sheetID,
+			UserID:     user.ID,
+			ReservedAt: &timeNow,
+		})
 		return c.JSON(202, echo.Map{
 			"id":         reservationID,
 			"sheet_rank": params.Rank,
@@ -432,6 +441,8 @@ func main() {
 		if err := tx.Commit(); err != nil {
 			return err
 		}
+
+		removeReservationFromCache(eventID, reservation.ID)
 
 		return c.NoContent(204)
 	}, loginRequired)

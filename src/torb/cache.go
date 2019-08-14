@@ -86,3 +86,48 @@ func setReservationsToCache(eventID int64, reservations []Reservation) error {
 	err = setDataToCache(key, data)
 	return err
 }
+
+func getReservationsFromCache(eventID int64) ([]Reservation, error) {
+	var reservations []Reservation
+	key := makeAllReservationsKey(eventID)
+	data, err := getDataFromCache(key)
+	if err != nil {
+		return nil, err
+	}
+
+	err = json.Unmarshal(data, &reservations)
+	if err != nil {
+		return nil, err
+	}
+	return reservations, nil
+}
+
+func appendReservationToCache(eventID int64, reservation Reservation) error {
+	reservations, err := getReservationsFromCache(eventID)
+	if err != nil {
+		if err == redis.ErrNil {
+			setReservationsToCache(eventID, []Reservation{reservation})
+			return nil
+		} else {
+			return err
+		}
+	}
+	reservations = append(reservations, reservation)
+	setReservationsToCache(eventID, reservations)
+	return nil
+}
+
+func removeReservationFromCache(eventID, reservationID int64) error {
+	reservations, err := getReservationsFromCache(eventID)
+	if err != nil {
+		return err
+	}
+	for i, v := range reservations {
+		if v.ID == reservationID {
+			newReservations := append(reservations[:i], reservations[i+1:]...)
+			setReservationsToCache(eventID, newReservations)
+			break
+		}
+	}
+	return nil
+}
