@@ -94,7 +94,7 @@ func main() {
 
 		initAllReservations()
 
-		user = User{ID: 1}
+		user := User{ID: 1}
 		data, err := json.Marshal(user)
 		setDataToCache("user", data)
 
