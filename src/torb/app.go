@@ -92,6 +92,8 @@ func main() {
 			return nil
 		}
 
+		initAllReservations()
+
 		return c.NoContent(204)
 	})
 	e.POST("/api/users", func(c echo.Context) error {
