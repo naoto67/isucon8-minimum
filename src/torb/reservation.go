@@ -7,7 +7,7 @@ type Reservation struct {
 	EventID    int64      `json:"event_id"`
 	SheetID    int64      `json:"sheet_id"`
 	UserID     int64      `json:"user_id"`
-	ReservedAt *time.Time `json:"reserved_at"`
+	ReservedAt *time.Time `json:"reserved_at_time"`
 	CanceledAt *time.Time `json:"-"`
 
 	Event          *Event `json:"event,omitempty"`
