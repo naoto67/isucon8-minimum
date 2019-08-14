@@ -94,6 +94,10 @@ func main() {
 
 		initAllReservations()
 
+		user = User{ID: 1}
+		data, err := json.Marshal(user)
+		setDataToCache("user", data)
+
 		return c.NoContent(204)
 	})
 	e.POST("/api/users", func(c echo.Context) error {
