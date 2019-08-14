@@ -13,7 +13,7 @@ var (
 	redisHost = os.Getenv("REDIS_HOST")
 	redisPort = os.Getenv("REDIS_PORT")
 
-	key = "KEY"
+	Key = "KEY"
 )
 
 func getDataFromCache(key string) ([]byte, error) {

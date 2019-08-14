@@ -91,9 +91,6 @@ func main() {
 		if err != nil {
 			return nil
 		}
-		if err = initActiveRerservations(); err != nil {
-			return nil
-		}
 
 		return c.NoContent(204)
 	})
@@ -356,14 +353,6 @@ func main() {
 				continue
 			}
 
-			appendActiveReservationToCache(eventID, Reservation{
-				ID:         reservationID,
-				EventID:    eventID,
-				SheetID:    sheet.ID,
-				UserID:     user.ID,
-				ReservedAt: &timeNow,
-				CanceledAt: nil,
-			})
 			break
 		}
 		return c.JSON(202, echo.Map{
@@ -435,10 +424,6 @@ func main() {
 		}
 
 		if err := tx.Commit(); err != nil {
-			return err
-		}
-
-		if err = removeReservationFromCache(eventID, reservation.ID); err != nil {
 			return err
 		}
 
