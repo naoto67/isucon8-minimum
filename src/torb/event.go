@@ -54,7 +54,7 @@ func getEvents(all bool) ([]*Event, error) {
 		events = append(events, &event)
 	}
 
-	for i, v := range events {
+	for _, v := range events {
 		reservations, err := getReservationsFromCache(v.ID)
 		if err != nil {
 			rows, err = db.Query("SELECT sheet_id FROM reservations WHERE event_id = ? AND canceled_at IS NULL", v.ID)
@@ -68,17 +68,18 @@ func getEvents(all bool) ([]*Event, error) {
 				if err != nil {
 					return nil, err
 				}
+				sheet, ok := getSheetByID(sheetID)
 				if ok < 0 {
-					return errors.New("not found")
+					return nil, errors.New("not found")
 				}
 				v.Remains--
 				v.Sheets[sheet.Rank].Remains--
 			}
 		} else {
-			for key, reservation := range reservations {
+			for _, reservation := range reservations {
 				sheet, ok := getSheetByID(reservation.SheetID)
 				if ok < 0 {
-					return errors.New("not found")
+					return nil, errors.New("not found")
 				}
 				v.Remains--
 				v.Sheets[sheet.Rank].Remains--
