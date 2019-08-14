@@ -53,7 +53,7 @@ func makeAllReservationsKey(eventID int64) string {
 func initAllReservations() {
 	rows, err := db.Query("SELECT * FROM reservations WHERE canceled_at IS NULL")
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
 	}
 
 	event_reservations := map[int64][]Reservation{}
@@ -61,14 +61,14 @@ func initAllReservations() {
 		var r Reservation
 		err := rows.Scan(&r.ID, &r.EventID, &r.SheetID, &r.UserID, &r.ReservedAt, &r.CanceledAt)
 		if err != nil {
-			panic(err)
+			fmt.Println(err)
 		}
 		event_reservations[r.EventID] = append(event_reservations[r.EventID], r)
 	}
 	for key, value := range event_reservations {
 		err := setReservationsToCache(key, value)
 		if err != nil {
-			panic(err)
+			fmt.Println(err)
 		}
 	}
 }
