@@ -1,0 +1,2 @@
+export REDIS_HOST=172.28.128.1
+export REDIS_PORT=6379
