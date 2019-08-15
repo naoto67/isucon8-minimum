@@ -195,12 +195,12 @@ func initEvents() error {
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var e *Event
-		err := rows.Scan(e.ID, e.Title, e.PublicFg, e.ClosedFg, e.Price)
+		var e Event
+		err := rows.Scan(&e.ID, &e.Title, &e.PublicFg, &e.ClosedFg, &e.Price)
 		if err != nil {
 			return err
 		}
-		pushEventToCache(e)
+		pushEventToCache(&e)
 	}
 	return nil
 }
