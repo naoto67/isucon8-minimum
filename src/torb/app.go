@@ -356,7 +356,7 @@ func main() {
 			}
 			rand.Seed(time.Now().UnixNano())
 			sheet = sheets[rand.Intn(len(sheets))]
-			sheetID = sheetID
+			sheetID = sheet.ID
 			res, err := tx.Exec("INSERT INTO reservations (event_id, sheet_id, user_id, reserved_at) VALUES (?, ?, ?, ?)", event.ID, sheet.ID, user.ID, timeNow.UTC().Format("2006-01-02 15:04:05.000000"))
 			if err != nil {
 				tx.Rollback()
