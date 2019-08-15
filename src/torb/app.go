@@ -92,6 +92,7 @@ func main() {
 			return nil
 		}
 
+		flushALL()
 		initAllReservations()
 
 		user := User{ID: 1}
@@ -442,7 +443,7 @@ func main() {
 			return err
 		}
 
-		removeReservationFromCache(eventID, reservation.ID)
+		removeReservationFromCache(eventID, reservation.ID, sheet.Rank)
 
 		return c.NoContent(204)
 	}, loginRequired)
