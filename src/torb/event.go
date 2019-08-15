@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"strconv"
 )
 
 type Event struct {
@@ -230,4 +231,27 @@ func (e *Event) toJson() []byte {
 	}
 	data, _ := json.Marshal(j)
 	return data
+}
+
+func initEvents() error {
+	rows, err := db.Query("SELECT * FROM events")
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var e Event
+		err := rows.Scan(&e.ID, &e.Title, &e.PublicFg, &e.ClosedFg, &e.Price)
+		if err != nil {
+			return err
+		}
+		pushEventToCache(&e)
+	}
+	return nil
+}
+
+func pushEventToCache(event *Event) {
+	key := EVENT_KEY
+	data := event.toJson()
+	setHashDataToCache(key, strconv.Itoa(int(event.ID)), data)
 }
