@@ -194,6 +194,7 @@ func main() {
 
 			if len(recentEvents) < 5 && !contains(eventIDs, event.ID) {
 				reservations, err := getReservationsFromCache(event.ID)
+				event.Total = 1000
 				event.Remains = 1000 - len(reservations)
 				if err != nil {
 					return err
