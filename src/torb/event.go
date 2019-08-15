@@ -168,32 +168,33 @@ func getEventWithoutDetail(event Event, loginUserID int64) (*Event, error) {
 		"B": &Sheets{Total: 300, Remains: 300, Price: 1000 + event.Price},
 		"C": &Sheets{Total: 500, Remains: 500, Price: 0 + event.Price},
 	}
+
+	// 予約席情報
+	rows, err := db.Query("SELECT * FROM reservations WHERE event_id = ? AND canceled_at IS NULL GROUP BY sheet_id HAVING reserved_at = MIN(reserved_at)", event.ID)
+	if err != nil {
+		return nil, err
+	}
+
 	event.Total = 1000
 	event.Remains = 1000
 
-	ranks := []string{"S", "A", "B", "C"}
-	for _, rank := range ranks {
-		reservations, _ := getReservationsFromCache(event.ID, rank)
-		count := len(reservations)
-		event.Sheets[rank].Remains -= count
-		event.Remains -= count
-	}
+	defer rows.Close()
 
-	//	for rows.Next() {
-	//		var reservation Reservation
-	//		err := rows.Scan(&reservation.ID, &reservation.EventID, &reservation.SheetID, &reservation.UserID, &reservation.ReservedAt, &reservation.CanceledAt)
-	//		if err != nil {
-	//			return nil, err
-	//		}
-	//
-	//		sheet, ok := getSheetByID(reservation.SheetID)
-	//		if ok < 0 {
-	//			return nil, errors.New("not found")
-	//		}
-	//
-	//		event.Sheets[sheet.Rank].Remains--
-	//		event.Remains--
-	//	}
+	for rows.Next() {
+		var reservation Reservation
+		err := rows.Scan(&reservation.ID, &reservation.EventID, &reservation.SheetID, &reservation.UserID, &reservation.ReservedAt, &reservation.CanceledAt)
+		if err != nil {
+			return nil, err
+		}
+
+		sheet, ok := getSheetByID(reservation.SheetID)
+		if ok < 0 {
+			return nil, errors.New("not found")
+		}
+
+		event.Sheets[sheet.Rank].Remains--
+		event.Remains--
+	}
 
 	return &event, nil
 }
