@@ -539,7 +539,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		pushEventToCache(&event)
+		pushEventToCache(event)
 		return c.JSON(200, event)
 	}, adminLoginRequired)
 	e.GET("/admin/api/events/:id", func(c echo.Context) error {
