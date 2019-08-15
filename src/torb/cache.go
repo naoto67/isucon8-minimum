@@ -181,10 +181,7 @@ func removeReservationFromCache(eventID int64, reservation Reservation) error {
 	if ok < 0 {
 		return errors.New("not found")
 	}
-	data, err := json.Marshal(reservation)
-	if err != nil {
-		return err
-	}
+	data := (&reservation).toJson()
 	key := makeAllReservationsKey(eventID, sheet.Rank)
 	removeListDataFromCache(key, data)
 	return nil
