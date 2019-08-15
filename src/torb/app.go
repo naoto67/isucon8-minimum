@@ -398,7 +398,7 @@ func main() {
 		if err != nil {
 			return resError(c, "not_found", 404)
 		}
-		rank := string(c.Param("rank"))
+		rank := c.Param("rank")
 		num, err := strconv.ParseInt(c.Param("num"), 10, 64)
 		if err != nil {
 			return resError(c, "not_found", 404)
@@ -424,15 +424,16 @@ func main() {
 			return resError(c, "invalid_rank", 404)
 		}
 
-		sheet, ok := getSheetByNumAndRank(num, rank)
-		if ok < 0 {
-			return resError(c, "invalid_sheet", 404)
-			return errors.New("invalid_sheet")
+		var sheet Sheet
+		if err := db.QueryRow("SELECT * FROM sheets WHERE `rank` = ? AND num = ?", rank, num).Scan(&sheet.ID, &sheet.Rank, &sheet.Num, &sheet.Price); err != nil {
+			if err == sql.ErrNoRows {
+				return resError(c, "invalid_sheet", 404)
+			}
+			return err
 		}
 
 		var reservation Reservation
-		if err := db.QueryRow("SELECT * FROM reservations WHERE event_id = ? AND sheet_id = ? AND canceled_at IS NULL", event.ID, sheet.ID).Scan(&reservation.ID, &reservation.EventID, &reservation.SheetID, &reservation.UserID, &reservation.ReservedAt, &reservation.CanceledAt); err != nil {
-
+		if err := db.QueryRow("SELECT * FROM reservations WHERE event_id = ? AND sheet_id = ? AND canceled_at IS NULL GROUP BY event_id HAVING reserved_at = MIN(reserved_at) ", event.ID, sheet.ID).Scan(&reservation.ID, &reservation.EventID, &reservation.SheetID, &reservation.UserID, &reservation.ReservedAt, &reservation.CanceledAt); err != nil {
 			if err == sql.ErrNoRows {
 				return resError(c, "not_reserved", 400)
 			}
