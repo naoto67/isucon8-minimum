@@ -173,9 +173,10 @@ func main() {
 			if err := rows.Scan(&reservation.ID, &reservation.EventID, &reservation.SheetID, &reservation.UserID, &reservation.ReservedAt, &reservation.CanceledAt, &event.ID, &event.Title, &event.PublicFg, &event.ClosedFg, &event.Price); err != nil {
 				return err
 			}
-			if reservation.CanceledAt != nil {
-				reservation.CanceledAtUnix = reservation.CanceledAt.Unix()
+			if reservation.CanceledAt == nil {
 				totalPrice += int(event.Price)
+			} else {
+				reservation.CanceledAtUnix = reservation.CanceledAt.Unix()
 			}
 
 			if len(recentReservations) < 5 {
