@@ -70,7 +70,7 @@ func initAllReservations() {
 	}
 	defer rows.Close()
 
-	event_rank_reservations := map[int64]map[string][]Reservation{}
+	event_rank_reservations := make(map[int64]map[string][]Reservation)
 	for rows.Next() {
 		var r Reservation
 		err := rows.Scan(&r.ID, &r.EventID, &r.SheetID, &r.UserID, &r.ReservedAt, &r.CanceledAt)
@@ -80,6 +80,9 @@ func initAllReservations() {
 		sheet, ok := getSheetByID(r.SheetID)
 		if ok < 0 {
 			continue
+		}
+		if event_rank_reservations[r.EventID] == nil {
+			event_rank_reservations[r.EventID] = make(map[string][]Reservation)
 		}
 		event_rank_reservations[r.EventID][sheet.Rank] = append(event_rank_reservations[r.EventID][sheet.Rank], r)
 	}
