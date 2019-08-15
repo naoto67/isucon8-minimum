@@ -2,6 +2,8 @@ package main
 
 import (
 	"errors"
+
+	"github.com/gomodule/redigo/redis"
 )
 
 type Event struct {
@@ -54,24 +56,18 @@ func getEvents(all bool) ([]*Event, error) {
 		events = append(events, &event)
 	}
 
-	rows, err = db.Query("SELECT * FROM reservations WHERE canceled_at IS NULL")
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var reservation Reservation
-		err = rows.Scan(&reservation.ID, &reservation.EventID, &reservation.SheetID, &reservation.UserID, &reservation.ReservedAt, &reservation.CanceledAt)
-		if err != nil {
-			return nil, err
-		}
-		event := getEventByID(events, reservation.EventID)
-		if event != nil {
-			err := assignReservation(event, reservation)
+	for _, event := range events {
+		ranks := []string{"S", "A", "B", "C"}
+		for _, v := range ranks {
+			reservations, err := getReservationsFromCache(event.ID, v)
 			if err != nil {
-				return nil, err
+				if err == redis.ErrNil {
+					continue
+				}
 			}
-
+			count := len(reservations)
+			event.Remains -= count
+			event.Sheets[v].Remains -= count
 		}
 	}
 
