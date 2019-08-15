@@ -17,6 +17,7 @@ var (
 
 	Key                 = "KEY"
 	ALL_RESERVATION_KEY = "ALL-RESERVAION-EVENT-ID-"
+	EVENT_KEY           = "EVENT"
 )
 
 func flushALL() error {
@@ -185,4 +186,26 @@ func removeReservationFromCache(eventID int64, reservation Reservation) error {
 	key := makeAllReservationsKey(eventID, sheet.Rank)
 	removeListDataFromCache(key, data)
 	return nil
+}
+
+func initEvents() {
+	rows, err := db.Query("SELECT * FROM events")
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var e *Event
+		err := rows.Scan(e.ID, e.Title, e.PublicFg, e.ClosedFg, e.Price)
+		if err != nil {
+			panic(err)
+		}
+		pushEventToCache(e)
+	}
+}
+
+func pushEventToCache(event *Event) {
+	key := EVENT_KEY
+	data := event.toJson()
+	pushListDataToCache(key, data)
 }

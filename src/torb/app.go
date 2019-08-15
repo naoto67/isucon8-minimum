@@ -95,6 +95,7 @@ func main() {
 
 		flushALL()
 		initAllReservations()
+		initEvents()
 
 		user := User{ID: 1}
 		data, err := json.Marshal(user)

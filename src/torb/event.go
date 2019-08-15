@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 )
 
@@ -208,4 +209,16 @@ func initializeEvent(event *Event) {
 		"B": &Sheets{Total: 300, Remains: 300, Price: 1000 + event.Price},
 		"C": &Sheets{Total: 500, Remains: 500, Price: 0 + event.Price},
 	}
+}
+
+func (e *Event) toJson() []byte {
+	j := map[string]interface{}{
+		"id":        e.ID,
+		"title":     e.Title,
+		"public_fg": e.PublicFg,
+		"closed_fg": e.ClosedFg,
+		"price":     e.Price,
+	}
+	data, _ := json.Marshal(j)
+	return data
 }
