@@ -128,12 +128,8 @@ func appendReservationToCache(eventID int64, reservation Reservation) error {
 	}
 	reservations, err := getReservationsFromCache(eventID, sheet.Rank)
 	if err != nil {
-		if err == redis.ErrNil {
-			setReservationsToCache(eventID, sheet.Rank, []Reservation{reservation})
-			return nil
-		} else {
-			return err
-		}
+		setReservationsToCache(eventID, sheet.Rank, []Reservation{reservation})
+		return err
 	}
 	reservations = append(reservations, reservation)
 	setReservationsToCache(eventID, sheet.Rank, reservations)
