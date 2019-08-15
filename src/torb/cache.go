@@ -17,6 +17,15 @@ var (
 	ALL_RESERVATION_KEY = "ALL-RESERVAION-EVENT-ID-"
 )
 
+func flushAll() error {
+	conn, err := redis.Dial("tcp", fmt.Sprintf("%s:%s", redisHost, redisPort))
+	if err != nil {
+		return err
+	}
+	conn.Do("FLUSHALL")
+	return nil
+}
+
 func getDataFromCache(key string) ([]byte, error) {
 	conn, err := redis.Dial("tcp", fmt.Sprintf("%s:%s", redisHost, redisPort))
 	if err != nil {

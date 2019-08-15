@@ -92,6 +92,7 @@ func main() {
 			return nil
 		}
 
+		flushAll()
 		initAllReservations()
 
 		user := User{ID: 1}
