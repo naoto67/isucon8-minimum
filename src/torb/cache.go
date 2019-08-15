@@ -202,6 +202,7 @@ func initEvents() error {
 		}
 		pushEventToCache(e)
 	}
+	return nil
 }
 
 func pushEventToCache(event *Event) {
