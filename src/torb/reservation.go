@@ -1,6 +1,9 @@
 package main
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 type Reservation struct {
 	ID         int64      `json:"id"`
@@ -16,4 +19,13 @@ type Reservation struct {
 	Price          int64  `json:"price,omitempty"`
 	ReservedAtUnix int64  `json:"reserved_at,omitempty"`
 	CanceledAtUnix int64  `json:"canceled_at,omitempty"`
+}
+
+func (r *Reservation) toJson() []byte {
+	j := map[string]int64{}
+	j["id"] = r.ID
+	j["event_id"] = r.EventID
+	j["sheet_id"] = r.SheetID
+	data, _ := json.Marshal(j)
+	return data
 }

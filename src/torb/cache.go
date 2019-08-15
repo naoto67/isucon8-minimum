@@ -144,7 +144,7 @@ func initAllReservations() {
 func setReservationsToCache(eventID int64, rank string, reservations []Reservation) error {
 	key := makeAllReservationsKey(eventID, rank)
 	for _, v := range reservations {
-		data, _ := json.Marshal(v)
+		data := (&v).toJson()
 		pushListDataToCache(key, data)
 	}
 	return nil
@@ -170,10 +170,7 @@ func appendReservationToCache(eventID int64, reservation Reservation) error {
 	if ok < 0 {
 		return errors.New("not found")
 	}
-	data, err := json.Marshal(reservation)
-	if err != nil {
-		return err
-	}
+	data := (&reservation).toJson()
 	key := makeAllReservationsKey(eventID, sheet.Rank)
 	pushListDataToCache(key, data)
 	return nil
