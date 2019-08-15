@@ -456,7 +456,7 @@ func main() {
 			return err
 		}
 
-		removeReservationFromCache(eventID, reservation.ID, sheet.Rank)
+		removeReservationFromCache(eventID, reservation)
 
 		return c.NoContent(204)
 	}, loginRequired)

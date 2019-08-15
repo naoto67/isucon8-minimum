@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/gomodule/redigo/redis"
 )
@@ -51,6 +52,50 @@ func setDataToCache(key string, data []byte) error {
 	}
 	return nil
 }
+
+func getListDataFromCache(key string) ([]byte, error) {
+	conn, err := redis.Dial("tcp", fmt.Sprintf("%s:%s", redisHost, redisPort))
+	if err != nil {
+		return nil, err
+	}
+
+	strs, err := redis.Strings(conn.Do("LRANGE", key, 0, -1))
+	if err != nil {
+		return nil, err
+	}
+	str := strings.Join(strs[:], ",")
+	str = "[" + str + "]"
+
+	return []byte(str), err
+}
+
+// RPUSHは最後に追加
+func pushListDataToCache(key string, data []byte) error {
+	conn, err := redis.Dial("tcp", fmt.Sprintf("%s:%s", redisHost, redisPort))
+	if err != nil {
+		return err
+	}
+	_, err = conn.Do("RPUSH", key, data)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// マッチするものを1つ削除
+func removeListDataFromCache(key string, data []byte) error {
+	conn, err := redis.Dial("tcp", fmt.Sprintf("%s:%s", redisHost, redisPort))
+	if err != nil {
+		return err
+	}
+	_, err = conn.Do("LREM", key, 1, data)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// =========================================================================
 
 func makeKey(id int64) string {
 	ID := strconv.Itoa(int(id))
@@ -98,18 +143,17 @@ func initAllReservations() {
 
 func setReservationsToCache(eventID int64, rank string, reservations []Reservation) error {
 	key := makeAllReservationsKey(eventID, rank)
-	data, err := json.Marshal(reservations)
-	if err != nil {
-		return err
+	for _, v := range reservations {
+		data, _ := json.Marshal(v)
+		pushListDataToCache(key, data)
 	}
-	err = setDataToCache(key, data)
-	return err
+	return nil
 }
 
 func getReservationsFromCache(eventID int64, rank string) ([]Reservation, error) {
 	var reservations []Reservation
 	key := makeAllReservationsKey(eventID, rank)
-	data, err := getDataFromCache(key)
+	data, err := getListDataFromCache(key)
 	if err != nil {
 		return nil, err
 	}
@@ -126,31 +170,25 @@ func appendReservationToCache(eventID int64, reservation Reservation) error {
 	if ok < 0 {
 		return errors.New("not found")
 	}
-	reservations, err := getReservationsFromCache(eventID, sheet.Rank)
-	if err != nil {
-		if err == redis.ErrNil {
-			setReservationsToCache(eventID, sheet.Rank, []Reservation{reservation})
-			return nil
-		} else {
-			return err
-		}
-	}
-	reservations = append(reservations, reservation)
-	setReservationsToCache(eventID, sheet.Rank, reservations)
-	return nil
-}
-
-func removeReservationFromCache(eventID, reservationID int64, rank string) error {
-	reservations, err := getReservationsFromCache(eventID, rank)
+	data, err := json.Marshal(reservation)
 	if err != nil {
 		return err
 	}
-	for i, v := range reservations {
-		if v.ID == reservationID {
-			newReservations := append(reservations[:i], reservations[i+1:]...)
-			setReservationsToCache(eventID, rank, newReservations)
-			break
-		}
+	key := makeAllReservationsKey(eventID, sheet.Rank)
+	pushListDataToCache(key, data)
+	return nil
+}
+
+func removeReservationFromCache(eventID int64, reservation Reservation) error {
+	sheet, ok := getSheetByID(reservation.SheetID)
+	if ok < 0 {
+		return errors.New("not found")
 	}
+	data, err := json.Marshal(reservation)
+	if err != nil {
+		return err
+	}
+	key := makeAllReservationsKey(eventID, sheet.Rank)
+	removeListDataFromCache(key, data)
 	return nil
 }
