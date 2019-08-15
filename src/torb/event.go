@@ -19,43 +19,19 @@ type Event struct {
 }
 
 func getEvents(all bool) ([]*Event, error) {
-	tx, err := db.Begin()
+	cacheEvents, err := getEventsFromCache()
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Commit()
-
-	rows, err := tx.Query("SELECT * FROM events ORDER BY id ASC")
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
 
 	var events []*Event
-	for rows.Next() {
-		var event Event
-		if err := rows.Scan(&event.ID, &event.Title, &event.PublicFg, &event.ClosedFg, &event.Price); err != nil {
-			return nil, err
-		}
+	for _, event := range cacheEvents {
 		if !all && !event.PublicFg {
 			continue
 		}
-		// e, err := getEventWithoutDetail(event, -1)
-		// if err != nil {
-		// 	return nil, err
-		// }
-		event.Total = 1000
-		event.Remains = 1000
-		event.Sheets = map[string]*Sheets{
-			"S": &Sheets{Total: 50, Remains: 50, Price: 5000 + event.Price},
-			"A": &Sheets{Total: 150, Remains: 150, Price: 3000 + event.Price},
-			"B": &Sheets{Total: 300, Remains: 300, Price: 1000 + event.Price},
-			"C": &Sheets{Total: 500, Remains: 500, Price: 0 + event.Price},
-		}
+		initializeEvent(&event)
 
 		events = append(events, &event)
-	}
-	for _, event := range events {
 		ranks := []string{"S", "A", "B", "C"}
 		for _, rank := range ranks {
 			reservations, _ := getReservationsFromCache(event.ID, rank)
@@ -254,4 +230,15 @@ func pushEventToCache(event *Event) {
 	key := EVENT_KEY
 	data := event.toJson()
 	setHashDataToCache(key, strconv.Itoa(int(event.ID)), data)
+}
+
+func getEventsFromCache() ([]Event, error) {
+	data, err := getAllHashDataFromCache(EVENT_KEY)
+	if err != nil {
+		return nil, err
+	}
+	var events []Event
+	err = json.Unmarshal(data, &events)
+
+	return events, err
 }
