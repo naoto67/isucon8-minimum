@@ -188,17 +188,17 @@ func removeReservationFromCache(eventID int64, reservation Reservation) error {
 	return nil
 }
 
-func initEvents() {
+func initEvents() error {
 	rows, err := db.Query("SELECT * FROM events")
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var e *Event
 		err := rows.Scan(e.ID, e.Title, e.PublicFg, e.ClosedFg, e.Price)
 		if err != nil {
-			panic(err)
+			return err
 		}
 		pushEventToCache(e)
 	}
