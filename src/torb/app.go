@@ -174,7 +174,8 @@ func main() {
 				return err
 			}
 			if reservation.CanceledAt == nil {
-				totalPrice += int(event.Price)
+				sheet, _ := getSheetByID(reservation.SheetID)
+				totalPrice += int(event.Price + sheet.Price)
 			} else {
 				reservation.CanceledAtUnix = reservation.CanceledAt.Unix()
 			}
