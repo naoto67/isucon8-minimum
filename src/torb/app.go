@@ -193,11 +193,12 @@ func main() {
 			}
 
 			if len(recentEvents) < 5 && !contains(eventIDs, event.ID) {
-				e, err := getEventWithoutDetail(event, -1)
+				reservations, err := getReservationsFromCache(event.ID)
+				event.Remains = 1000 - len(reservations)
 				if err != nil {
 					return err
 				}
-				recentEvents = append(recentEvents, e)
+				recentEvents = append(recentEvents, &event)
 				eventIDs = append(eventIDs, event.ID)
 			}
 		}
