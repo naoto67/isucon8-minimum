@@ -18,6 +18,7 @@ import (
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/gomodule/redigo/redis"
 	"github.com/gorilla/sessions"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo-contrib/session"
@@ -194,11 +195,23 @@ func main() {
 			}
 
 			if len(recentEvents) < 5 && !contains(eventIDs, event.ID) {
-				e, err := getEventWithoutDetail(event, -1)
+				initializeEvent(&event)
+				ranks := []string{"S", "A", "B", "C"}
+				for _, v := range ranks {
+					reservations, err := getReservationsFromCache(event.ID, v)
+					if err != nil {
+						if err == redis.ErrNil {
+							continue
+						}
+					}
+					count := len(reservations)
+					event.Remains -= count
+					event.Sheets[v].Remains -= count
+				}
 				if err != nil {
 					return err
 				}
-				recentEvents = append(recentEvents, e)
+				recentEvents = append(recentEvents, &event)
 				eventIDs = append(eventIDs, event.ID)
 			}
 		}

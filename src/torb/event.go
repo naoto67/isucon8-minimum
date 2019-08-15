@@ -198,3 +198,14 @@ func assignReservation(event *Event, reservation Reservation) error {
 	event.Sheets[sheet.Rank].Remains--
 	return nil
 }
+
+func initializeEvent(event *Event) {
+	event.Total = 1000
+	event.Remains = 1000
+	event.Sheets = map[string]*Sheets{
+		"S": &Sheets{Total: 50, Remains: 50, Price: 5000 + event.Price},
+		"A": &Sheets{Total: 150, Remains: 150, Price: 3000 + event.Price},
+		"B": &Sheets{Total: 300, Remains: 300, Price: 1000 + event.Price},
+		"C": &Sheets{Total: 500, Remains: 500, Price: 0 + event.Price},
+	}
+}
