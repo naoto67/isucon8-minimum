@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
+	// "errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -122,10 +122,8 @@ func getReservationsFromCache(eventID int64, rank string) ([]Reservation, error)
 }
 
 func appendReservationToCache(eventID int64, reservation Reservation) error {
-	sheet, ok := getSheetByID(reservation.SheetID)
-	if ok < 0 {
-		return errors.New("not found")
-	}
+	sheet, _ := getSheetByID(reservation.SheetID)
+
 	reservations, err := getReservationsFromCache(eventID, sheet.Rank)
 	if err != nil {
 		setReservationsToCache(eventID, sheet.Rank, []Reservation{reservation})
