@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"sort"
 	"strconv"
 )
 
@@ -23,6 +24,7 @@ func getEvents(all bool) ([]*Event, error) {
 	if err != nil {
 		return nil, err
 	}
+	sort.Slice(cacheEvents, func(i, j int) bool { return cacheEvents[i].ID < cacheEvents[j].ID })
 
 	var events []*Event
 	for i := range cacheEvents {
