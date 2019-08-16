@@ -245,3 +245,16 @@ func getEventsFromCache() ([]Event, error) {
 
 	return events, err
 }
+
+func getEventFromCache(id string) (*Event, error) {
+	data, err := getHashDataFromCache(EVENT_KEY, id)
+	if err != nil {
+		return nil, err
+	}
+	var event Event
+	err = json.Unmarshal(data, &event)
+	if err != nil {
+		return nil, err
+	}
+	return &event, nil
+}

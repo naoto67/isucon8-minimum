@@ -315,10 +315,10 @@ func main() {
 			return err
 		}
 
-		var event Event
-		err = db.QueryRow("SELECT * FROM events WHERE id = ?", eventID).Scan(&event.ID, &event.Title, &event.PublicFg, &event.ClosedFg, &event.Price)
+		event, err := getEventFromCache(strconv.Itoa(int(eventID)))
+
 		if err != nil {
-			if err == sql.ErrNoRows {
+			if err == redis.ErrNil {
 				return resError(c, "invalid_event", 404)
 			}
 			return err
