@@ -31,7 +31,6 @@ func getEvents(all bool) ([]*Event, error) {
 		}
 		initializeEvent(&event)
 
-		events = append(events, &event)
 		ranks := []string{"S", "A", "B", "C"}
 		for _, rank := range ranks {
 			reservations, _ := getReservationsFromCache(event.ID, rank)
@@ -39,6 +38,8 @@ func getEvents(all bool) ([]*Event, error) {
 			event.Remains -= count
 			event.Sheets[rank].Remains -= count
 		}
+
+		events = append(events, &event)
 	}
 
 	// rows, err = db.Query("SELECT * FROM reservations WHERE canceled_at IS NULL")
@@ -199,11 +200,11 @@ func initializeEvent(event *Event) {
 
 func (e *Event) toJson() []byte {
 	j := map[string]interface{}{
-		"id":        e.ID,
-		"title":     e.Title,
-		"public_fg": e.PublicFg,
-		"closed_fg": e.ClosedFg,
-		"price":     e.Price,
+		"id":     e.ID,
+		"title":  e.Title,
+		"public": e.PublicFg,
+		"closed": e.ClosedFg,
+		"price":  e.Price,
 	}
 	data, _ := json.Marshal(j)
 	return data
