@@ -25,21 +25,21 @@ func getEvents(all bool) ([]*Event, error) {
 	}
 
 	var events []*Event
-	for _, event := range cacheEvents {
-		if !all && !event.PublicFg {
+	for i := range cacheEvents {
+		if !all && !cacheEvents[i].PublicFg {
 			continue
 		}
-		initializeEvent(&event)
+		initializeEvent(&cacheEvents[i])
 
 		ranks := []string{"S", "A", "B", "C"}
 		for _, rank := range ranks {
-			reservations, _ := getReservationsFromCache(event.ID, rank)
+			reservations, _ := getReservationsFromCache(cacheEvents[i].ID, rank)
 			count := len(reservations)
-			event.Remains -= count
-			event.Sheets[rank].Remains -= count
+			cacheEvents[i].Remains -= count
+			cacheEvents[i].Sheets[rank].Remains -= count
 		}
 
-		events = append(events, &event)
+		events = append(events, &cacheEvents[i])
 	}
 
 	// rows, err = db.Query("SELECT * FROM reservations WHERE canceled_at IS NULL")
